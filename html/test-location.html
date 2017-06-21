@@ -1,0 +1,51 @@
+ <!DOCTYPE html>
+<html>
+<head>
+<title>Test Bus Location</title>
+</head>
+<body>
+
+<h1>Testing Potong Location</h1>
+
+<select>
+  <option value="p1">Potong-1</option>
+  <option value="p2">Potong-2</option>
+  <option value="p2a">Potong-2a</option>
+  <option value="p3">Potong-3</option>
+</select>
+
+<select>
+  <option value="p1">11AA33</option>
+  <option value="p2">Potong-2</option>
+  <option value="p2a">Potong-2a</option>
+  <option value="p3">Potong-3</option>
+</select> 
+
+<button type="button"
+onclick="getLocation()">
+Get Lastest Bus Data</button>
+
+<div>
+	Actual Location
+	<p id="actual-location"></p>
+<div>
+
+<script>
+var x = document.getElementById("actual-location");
+
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition);
+    } else { 
+        x.innerHTML = "Geolocation is not supported by this browser.";
+    }
+}
+
+function showPosition(position) {
+    x.innerHTML = "Latitude: " + position.coords.latitude + 
+    "<br>Longitude: " + position.coords.longitude;
+}
+</script>
+
+</body>
+</html> 
