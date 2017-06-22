@@ -60,8 +60,8 @@ data = data.drop(data[data['distance_from_last_point'] > 0.2].index)
 data = data.drop(data[data['second_from_last_point'] > 1000].index)
 
 # # Filter relavant data and divide into in and out trip
-data = data[['linear_ref', 'direction', 'day_of_week', 'hour', 'speed',
-             'second_from_last_point',  'last_point_location']]
+data = data[['second_from_last_point',  'direction', 'day_of_week',
+             'hour', 'speed', 'distance_from_last_point', 'last_point_location']]
 #data = data[['lat', 'lon', 'direction', 'day_of_week', 'hour', 'speed',
 #             'second_from_last_point',  'last_point_lat', 'last_point_lon']]
 
@@ -82,6 +82,10 @@ X = onehotencoder.fit_transform(X).toarray()
 X = X[:, 1:]
 
 
+import statsmodels.formula.api as sm
+
+
+
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
 
@@ -90,30 +94,51 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
 #regressor = RandomForestRegressor()
 #regressor.fit(X_train, y_train)
 
-from sklearn.linear_model import Ridge
-regressor = Ridge()
-regressor.fit(X_train, y_train)
-
-#from sklearn.linear_model import MultiTaskElasticNet
-#regressor = MultiTaskElasticNet()
+#from sklearn.linear_model import Ridge
+#regressor = Ridge()
 #regressor.fit(X_train, y_train)
 
+#from sklearn.linear_model import Lars
+#regressor = Lars()
+#regressor.fit(X_train, y_train)
+
+from sklearn.linear_model import Lars
+regressor = Lars()
+regressor.fit(X_train, y_train)
+
+from sklearn.externals import joblib
+from flask import Flask, request, jsonify
 
 y_pred = regressor.predict(X_test)
 score = regressor.score(X_test, y_test)
 
-def export_model(modellers, filename):
-    from sklearn.externals import joblib
-    joblib.dump(modellers, 'pickled-data/'+filename+'.pkl')
+BUS_LINES = ['1', '2', '2a', '3']
+
+def export_model(regressor, filename):
+    joblib.dump(regressor, 'pickled-data/'+filename+'.pkl')
 
 def import_model(filename):
-    from sklearn.externals import joblib
     return joblib.load('pickled-data/'+filename+'.pkl')
 
 def save_model(filename):
     export_model([regressor, labelencoder_direction, onehotencoder], filename)
 
-def clean_data(data_point, time):
+#def clean_data(data_point, time):
+#    new_data_point = data_point.copy()
+#    new_data_point['timestamp'] = pd.to_datetime(new_data_point['timestamp'])
+#    new_data_point['day_of_week'] = new_data_point['timestamp'].weekday()
+#    new_data_point['hour'] = new_data_point['timestamp'].hour
+#    new_data_point['second_from_last_point'] = (time - new_data_point['timestamp']).total_seconds()
+##    new_data_point['last_point_location'] = new_data_point['linear_ref']
+#    new_data_point['last_point_lat'] = new_data_point['lat']
+#    new_data_point['last_point_lon'] = new_data_point['lon']
+##    data_point.timestamp + datetime.timedelta(0,5)
+#
+#    new_data_point = new_data_point[['direction', 'day_of_week', 'hour', 'speed', 
+#                                     'second_from_last_point', 'linear_ref']]
+#    return new_data_point
+
+def clean_data_time(data_point, next_stop_location):
     new_data_point = data_point.copy()
     new_data_point['timestamp'] = pd.to_datetime(new_data_point['timestamp'])
     new_data_point['day_of_week'] = new_data_point['timestamp'].weekday()
@@ -128,27 +153,21 @@ def clean_data(data_point, time):
                                      'second_from_last_point', 'linear_ref']]
     return new_data_point
     
-def encode_data(data_point):
+def encode_data(data_point, labelencoder, onehotencoder):
     new_data_point = data_point.copy()
-#    labelencoder_direction = LabelEncoder()
-    new_data_point[0] = labelencoder_direction.transform([new_data_point[0]])[0]
-    
-#    onehotencoder = OneHotEncoder(categorical_features = [1])
+    new_data_point[0] = labelencoder.transform([new_data_point[0]])[0]
     new_data_point = onehotencoder.transform([new_data_point]).toarray()
-#    print(new_data_point.shape)
     new_data_point = new_data_point[0, 1:]
     
     return new_data_point
     
-def get_lastest_gps(bus_id):
+def get_lastest_gps(bus_line, bus_id):
     import requests
-    data = requests.get('https://api.traffy.xyz/vehicle/?line=potong-1').json()
+    data = requests.get('https://api.traffy.xyz/vehicle/?line=potong-'+str(bus_line)).json()
     buses = data['results']
     for bus in buses:
         if(bus['id'] == int(bus_id)):
-#            print('found the bus')
             return bus
-#    print('Not found the Bus')
     return None
 
 def get_bus_info(bus):
@@ -164,19 +183,52 @@ def get_bus_info(bus):
 #    bus_data['distance_from_route_in_meter']
     return bus_data
 
-def predict_location(bus_id):
-    bus = get_lastest_gps(bus_id)
+def predict_time(bus_line, bus_id):
+    print(bus_line,bus_id)
+    bus_line = str(bus_line)
+    if(bus_line not in BUS_LINES):
+        return 'This bus line is not available!'
+        
+    bus = get_lastest_gps(bus_line, bus_id)
+    
     if(not bus):
-        return 'This bus is not available'
+        return 'This bus is not available!'
+        
+    [regressor, labelencoder, onehotencoder] = import_model('potong-' + bus_line)
+
     bus_data = get_bus_info(bus)
     time = pd.to_datetime(datetime.datetime.utcnow())
-    cleaned_bus_data = clean_data(bus_data, time)
-    encoded_bus_data = encode_data(cleaned_bus_data)
+    cleaned_bus_data = clean_data_time(bus_data, time)
+    encoded_bus_data = encode_data(cleaned_bus_data, labelencoder, onehotencoder)
+    
     
     predicted_location = regressor.predict([encoded_bus_data])
-    print(cleaned_bus_data['second_from_last_point'])
-    print(bus_data['linear_ref'])
-    return predicted_location
+#    print(cleaned_bus_data['second_from_last_point'])
+#    print(bus_data['linear_ref'])
+    return jsonify({'predicted_linear_ref': predicted_location[0],
+                    'last_point_data': {
+                        'last_timestamp': bus_data['timestamp'],
+                        'timestamp_now': time,
+                        'second_from_last_point': cleaned_bus_data['second_from_last_point'],
+                        'last_linear_ref': bus_data['linear_ref'],
+                        'last_speed': bus_data['speed'],
+                        'direction': bus_data['direction'],}
+                    })
+
+
+#def predict_location(bus_id):
+#    bus = get_lastest_gps(bus_id)
+#    if(not bus):
+#        return 'This bus is not available'
+#    bus_data = get_bus_info(bus)
+#    time = pd.to_datetime(datetime.datetime.utcnow())
+#    cleaned_bus_data = clean_data(bus_data, time)
+#    encoded_bus_data = encode_data(cleaned_bus_data)
+#    
+#    predicted_location = regressor.predict([encoded_bus_data])
+#    print(cleaned_bus_data['second_from_last_point'])
+#    print(bus_data['linear_ref'])
+#    return predicted_location[0]
 
 #def ttbb(bus_id):
 #    bus = get_lastest_gps(bus_id)

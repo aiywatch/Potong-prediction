@@ -176,7 +176,7 @@ def predict_location(bus_id):
     predicted_location = regressor.predict([encoded_bus_data])
     print(cleaned_bus_data['second_from_last_point'])
     print(bus_data['linear_ref'])
-    return predicted_location
+    return predicted_location[0]
 
 #def ttbb(bus_id):
 #    bus = get_lastest_gps(bus_id)
