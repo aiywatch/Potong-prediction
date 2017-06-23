@@ -70,7 +70,41 @@ def get_bus_info(bus):
 #    bus_data['distance_from_route_in_meter']
     return bus_data
 
-@app.route('/location/<bus_line>/<bus_id>', methods=['GET'])
+#@app.route('/predict_potong_current_location/<bus_line>/<bus_id>', methods=['GET'])
+#def predict_location(bus_line, bus_id):
+#    print(bus_line,bus_id)
+#    bus_line = str(bus_line)
+#    if(bus_line not in BUS_LINES):
+#        return 'This bus line is not available!'
+#        
+#    bus = get_lastest_gps(bus_line, bus_id)
+#    
+#    if(not bus):
+#        return 'This bus is not available!'
+#        
+#    [regressor, labelencoder, onehotencoder] = import_model('potong-' + bus_line)
+#
+#    bus_data = get_bus_info(bus)
+#    time = pd.to_datetime(datetime.datetime.utcnow())
+#    cleaned_bus_data = clean_data(bus_data, time)
+#    encoded_bus_data = encode_data(cleaned_bus_data, labelencoder, onehotencoder)
+#    
+#    
+#    predicted_location = regressor.predict([encoded_bus_data])
+##    print(cleaned_bus_data['second_from_last_point'])
+##    print(bus_data['linear_ref'])
+#    return jsonify({'predicted_linear_ref': predicted_location[0],
+#                    'last_point_data': {
+#                        'last_timestamp': bus_data['timestamp'],
+#                        'timestamp_now': time,
+#                        'second_from_last_point': cleaned_bus_data['second_from_last_point'],
+#                        'last_linear_ref': bus_data['linear_ref'],
+#                        'last_speed': bus_data['speed'],
+#                        'direction': bus_data['direction'],}
+#                    })
+
+    
+@app.route('/predict_potong_current_location/<bus_line>/<bus_id>', methods=['GET'])
 def predict_location(bus_line, bus_id):
     print(bus_line,bus_id)
     bus_line = str(bus_line)
@@ -78,6 +112,7 @@ def predict_location(bus_line, bus_id):
         return 'This bus line is not available!'
         
     bus = get_lastest_gps(bus_line, bus_id)
+    
     
     if(not bus):
         return 'This bus is not available!'
@@ -88,11 +123,11 @@ def predict_location(bus_line, bus_id):
     time = pd.to_datetime(datetime.datetime.utcnow())
     cleaned_bus_data = clean_data(bus_data, time)
     encoded_bus_data = encode_data(cleaned_bus_data, labelencoder, onehotencoder)
-    
-    
+  
     predicted_location = regressor.predict([encoded_bus_data])
 #    print(cleaned_bus_data['second_from_last_point'])
 #    print(bus_data['linear_ref'])
+  
     return jsonify({'predicted_linear_ref': predicted_location[0],
                     'last_point_data': {
                         'last_timestamp': bus_data['timestamp'],
@@ -103,11 +138,11 @@ def predict_location(bus_line, bus_id):
                         'direction': bus_data['direction'],}
                     })
 
-@app.route('/')
-def home_page():
-    online_users = mongo.db.users.find({'online': True})
-    return render_template('index.html',
-        online_users=online_users)
+#@app.route('/')
+#def home_page():
+#    online_users = mongo.db.users.find({'online': True})
+#    return render_template('index.html',
+#        online_users=online_users)
 
     
 if __name__ == '__main__':

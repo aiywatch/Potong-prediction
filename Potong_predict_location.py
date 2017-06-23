@@ -102,6 +102,15 @@ regressor.fit(X_train, y_train)
 y_pred = regressor.predict(X_test)
 score = regressor.score(X_test, y_test)
 
+
+#y_diff = y_pred - y_test
+#
+#plt.scatter(X_test[:,-1], y_diff)
+#plt.show()
+
+#y_diff[]
+
+
 def export_model(modellers, filename):
     from sklearn.externals import joblib
     joblib.dump(modellers, 'pickled-data/'+filename+'.pkl')
@@ -174,8 +183,9 @@ def predict_location(bus_id):
     encoded_bus_data = encode_data(cleaned_bus_data)
     
     predicted_location = regressor.predict([encoded_bus_data])
-    print(cleaned_bus_data['second_from_last_point'])
-    print(bus_data['linear_ref'])
+    print('last timestamp : ' + str(bus_data['timestamp']))
+    print('lag time :' + str(cleaned_bus_data['second_from_last_point']))
+    print('linear ref :' + str(bus_data['linear_ref']))
     return predicted_location[0]
 
 #def ttbb(bus_id):

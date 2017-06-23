@@ -73,6 +73,9 @@ X = data.iloc[:, 1:].values
 y = data.iloc[:, 0].values
 
 
+#plt.scatter(data['distance_from_last_point'], y)
+#plt.show()
+             
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 labelencoder_direction = LabelEncoder()
 X[:, 0] = labelencoder_direction.fit_transform(X[:, 0])
@@ -83,11 +86,17 @@ X = X[:, 1:]
 
 
 import statsmodels.formula.api as sm
+X = np.append(arr = np.ones((X.shape[0],1), dtype=int), values = X, axis = 1)
 
-
+X_opt = X[:, [0, 1, 4, 6, 7, 8, 9, 10, 11]]
+regressor_OLS = sm.OLS(endog = y, exog = X_opt).fit()
+regressor_OLS.summary()
 
 from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
+X_train, X_test, y_train, y_test = train_test_split(X_opt, y, test_size = 0.1)
+
+#from sklearn.model_selection import train_test_split
+#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
 
 
 #from sklearn.ensemble import RandomForestRegressor
