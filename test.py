@@ -1,13 +1,20 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jun 22 15:59:04 2017
-
-@author: aiy
-"""
 
 #from predict_potong_flask import predict_location
-import predict_potong_flask as pp
+import predict_potong_flask
+from flask import Flask, request, jsonify
 
-pp.predict_location(1, 388)
-pp.BUS_LINES
+app = Flask(__name__)
+
+@app.route('/predict_potong_current_location/<bus_line>/<bus_id>', methods=['GET'])
+def predict_location(bus_line, bus_id):
+    return jsonify(predict_potong_flask.predict_location(bus_line, bus_id))
+
+
+if __name__ == '__main__':
+    try:
+        port = int(sys.argv[1])
+    except Exception as e:
+        port = 8001
+
+
+    app.run(host='0.0.0.0', port=port, debug=True)

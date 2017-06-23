@@ -8,11 +8,11 @@ Created on Wed Jun 21 09:12:06 2017
 from sklearn.externals import joblib
 import pandas as pd
 import datetime
-from flask import Flask, request, jsonify
-from flask_pymongo import PyMongo
+#from flask import Flask, request, jsonify
+#from flask_pymongo import PyMongo
 
-app = Flask(__name__)
-mongo = PyMongo(app)
+#app = Flask(__name__)
+#mongo = PyMongo(app)
 
 BUS_LINES = ['1', '2', '2a', '3']
 
@@ -21,8 +21,6 @@ def export_model(regressor, filename):
 
 def import_model(filename):
     return joblib.load('pickled-data/'+filename+'.pkl')
-
-#[regressor, labelencoder_direction, onehotencoder] = import_model('potong-1')
 
 
 def clean_data(data_point, time):
@@ -70,49 +68,13 @@ def get_bus_info(bus):
 #    bus_data['distance_from_route_in_meter']
     return bus_data
 
-#@app.route('/predict_potong_current_location/<bus_line>/<bus_id>', methods=['GET'])
-#def predict_location(bus_line, bus_id):
-#    print(bus_line,bus_id)
-#    bus_line = str(bus_line)
-#    if(bus_line not in BUS_LINES):
-#        return 'This bus line is not available!'
-#        
-#    bus = get_lastest_gps(bus_line, bus_id)
-#    
-#    if(not bus):
-#        return 'This bus is not available!'
-#        
-#    [regressor, labelencoder, onehotencoder] = import_model('potong-' + bus_line)
-#
-#    bus_data = get_bus_info(bus)
-#    time = pd.to_datetime(datetime.datetime.utcnow())
-#    cleaned_bus_data = clean_data(bus_data, time)
-#    encoded_bus_data = encode_data(cleaned_bus_data, labelencoder, onehotencoder)
-#    
-#    
-#    predicted_location = regressor.predict([encoded_bus_data])
-##    print(cleaned_bus_data['second_from_last_point'])
-##    print(bus_data['linear_ref'])
-#    return jsonify({'predicted_linear_ref': predicted_location[0],
-#                    'last_point_data': {
-#                        'last_timestamp': bus_data['timestamp'],
-#                        'timestamp_now': time,
-#                        'second_from_last_point': cleaned_bus_data['second_from_last_point'],
-#                        'last_linear_ref': bus_data['linear_ref'],
-#                        'last_speed': bus_data['speed'],
-#                        'direction': bus_data['direction'],}
-#                    })
-
-    
-@app.route('/predict_potong_current_location/<bus_line>/<bus_id>', methods=['GET'])
 def predict_location(bus_line, bus_id):
-    print(bus_line,bus_id)
+#    print(bus_line,bus_id)
     bus_line = str(bus_line)
     if(bus_line not in BUS_LINES):
         return 'This bus line is not available!'
         
     bus = get_lastest_gps(bus_line, bus_id)
-    
     
     if(not bus):
         return 'This bus is not available!'
@@ -123,12 +85,12 @@ def predict_location(bus_line, bus_id):
     time = pd.to_datetime(datetime.datetime.utcnow())
     cleaned_bus_data = clean_data(bus_data, time)
     encoded_bus_data = encode_data(cleaned_bus_data, labelencoder, onehotencoder)
-  
+    
+    
     predicted_location = regressor.predict([encoded_bus_data])
 #    print(cleaned_bus_data['second_from_last_point'])
 #    print(bus_data['linear_ref'])
-  
-    return jsonify({'predicted_linear_ref': predicted_location[0],
+    output = {'predicted_linear_ref': predicted_location[0],
                     'last_point_data': {
                         'last_timestamp': bus_data['timestamp'],
                         'timestamp_now': time,
@@ -136,31 +98,8 @@ def predict_location(bus_line, bus_id):
                         'last_linear_ref': bus_data['linear_ref'],
                         'last_speed': bus_data['speed'],
                         'direction': bus_data['direction'],}
-                    })
-
-#@app.route('/')
-#def home_page():
-#    online_users = mongo.db.users.find({'online': True})
-#    return render_template('index.html',
-#        online_users=online_users)
-
+                    }
     
-if __name__ == '__main__':
-    try:
-        port = int(sys.argv[1])
-    except Exception as e:
-        port = 8000
-
-#    try:
-#        clf = joblib.load(model_file_name)
-#        print('model loaded')
-#        model_columns = joblib.load(model_columns_file_name)
-#        print('model columns loaded')
-#
-#    except Exception as e:
-#        print('No model here')
-#        print('Train first')
-#        print(str(e))
-#        clf = None
-
-    app.run(host='0.0.0.0', port=port, debug=True)
+#    output = jsonify(output)
+  
+    return output
