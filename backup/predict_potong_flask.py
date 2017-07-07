@@ -9,7 +9,6 @@ from sklearn.externals import joblib
 import pandas as pd
 import datetime
 import math
-import requests
 
 #from flask import Flask, request, jsonify
 #from flask_pymongo import PyMongo
@@ -39,7 +38,7 @@ def clean_data(data_point, time):
     new_data_point['location_zone'] = math.floor(new_data_point['linear_ref'] * 10000)
 
     new_data_point = new_data_point[['direction', 'day_of_week', 'hour', 'speed', 
-                                     'linear_ref', 'second_from_last_point']]
+                                     'location_zone', 'second_from_last_point']]
     return new_data_point
     
 def encode_data(data_point, labelencoder, onehotencoder):
@@ -60,7 +59,7 @@ def encode_data(data_point, labelencoder, onehotencoder):
 #    return None
 
 def get_lastest_gps(bus_line, bus_vehicle_id):
-    
+    import requests
     data = requests.get('https://api.traffy.xyz/vehicle/?vehicle_id='+str(bus_vehicle_id)).json()
     bus = data['results']
     if(bus):
@@ -104,12 +103,6 @@ def predict_location(bus_line, bus_vehicle_id):
     predicted_location = regressor.predict([encoded_bus_data])
 #    print(cleaned_bus_data['second_from_last_point'])
 #    print(bus_data['linear_ref'])
-
-
-#    req = requests.get('https://api.traffy.xyz/v0/route/583/linear_ref/?coords={},{}'.format(lng, lat)).json()
-#    lin_gnss = req['location']['linear_ref']
-    
-    
     output = {'predicted_linear_ref': predicted_location[0],
               'predicting time': time,
                     'last_point_data': {
@@ -126,7 +119,5 @@ def predict_location(bus_line, bus_vehicle_id):
     return output
 
 
-#print predict_location(2, '359739072730088')
-#pd.to_datetime(datetime.datetime.utcnow())
-
-print predict_location(1, "117620103627")
+a = predict_location(1, '059049183')
+pd.to_datetime(datetime.datetime.utcnow())

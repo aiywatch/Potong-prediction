@@ -26,10 +26,10 @@ data['day_of_week'] = data['timestamp'].apply(get_day_of_week)
 data['hour'] = data['timestamp'].apply(get_hour)
 
 
-## ## Add location zone
-#data['location_zone'] = (data['linear_ref'] * 10000).apply(math.floor)
-#data[data['location_zone'] > 10000] = 10000
-#data[data['location_zone'] < 0] = 0
+# ## Add location zone
+data['location_zone'] = (data['linear_ref'] * 10000).apply(math.floor)
+data[data['location_zone'] > 10000] = 10000
+data[data['location_zone'] < 0] = 0
 
 
 # ## Duplicate data for training/testing
@@ -42,7 +42,6 @@ temp_data3['distance_from_last_point'] = temp_data3['linear_ref'] - temp_data3['
 temp_data3['last_point_location'] = temp_data3['linear_ref'].shift(3)
 temp_data3['last_point_lat'] = temp_data3['lat'].shift(3)
 temp_data3['last_point_lon'] = temp_data3['lon'].shift(3)
-temp_data3['last_point_speed'] = temp_data3['speed'].shift(3)
 
 # # 2nd previous point
 temp_data = data.copy()
@@ -52,7 +51,6 @@ temp_data['distance_from_last_point'] = temp_data['linear_ref'] - temp_data['lin
 temp_data['last_point_location'] = temp_data['linear_ref'].shift(2)
 temp_data['last_point_lat'] = temp_data['lat'].shift(2)
 temp_data['last_point_lon'] = temp_data['lon'].shift(2)
-temp_data['last_point_speed'] = temp_data['speed'].shift(2)
 
 
 # # Last point
@@ -62,12 +60,10 @@ data['distance_from_last_point'] = data['linear_ref'] - data['linear_ref'].shift
 data['last_point_location'] = data['linear_ref'].shift()
 data['last_point_lat'] = data['lat'].shift()
 data['last_point_lon'] = data['lon'].shift()
-data['last_point_speed'] = data['speed'].shift()
 
 
 # ## append all the data
 data = pd.concat([data, temp_data, temp_data3])
-
 
 
 # ## Remove Missing data and Outlier
@@ -77,15 +73,9 @@ data = data.drop(data[data['distance_from_last_point'] > 0.2].index)
 data = data.drop(data[data['second_from_last_point'] > 1000].index)
 
 
-# ## Add location zone
-data['last_point_location_zone'] = (data['last_point_location'] * 10000).apply(math.floor)
-data[data['last_point_location_zone'] > 10000] = 10000
-data[data['last_point_location_zone'] < 0] = 0
-
-
 # ## Filter relavant data
-data = data[['second_from_last_point', 'direction', 'day_of_week', 'hour', 'last_point_speed',
-             'last_point_location', 'distance_from_last_point']]
+data = data[['linear_ref', 'direction', 'day_of_week', 'hour', 'speed',
+             'location_zone', 'second_from_last_point']]
 #data = data[['lat', 'lon', 'direction', 'day_of_week', 'hour', 'speed',
 #             'second_from_last_point',  'last_point_lat', 'last_point_lon']]
 
@@ -100,8 +90,8 @@ y = data.iloc[:, 0].values
 
 # ## Encode data & Train/Test split
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
-labelencoder_direction = LabelEncoder()
-X[:, 0] = labelencoder_direction.fit_transform(X[:, 0])
+labelencoder = LabelEncoder()
+X[:, 0] = labelencoder.fit_transform(X[:, 0])
 
 onehotencoder = OneHotEncoder(categorical_features = [1])
 X = onehotencoder.fit_transform(X).toarray()
@@ -111,41 +101,21 @@ X = X[:, 1:]
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1)
 
-from sklearn.metrics import mean_squared_error
 
-## Machine Learning Algorithm
-#from sklearn.ensemble import RandomForestRegressor
-#regressor = RandomForestRegressor()
-#regressor.fit(X_train, y_train)
+# ## Machine Learning Algorithm
+# from sklearn.ensemble import RandomForestRegressor
+# regressor = RandomForestRegressor()
+# regressor.fit(X_train, y_train)
 
 from sklearn.linear_model import Ridge
 regressor = Ridge()
 regressor.fit(X_train, y_train)
 
 y_pred = regressor.predict(X_test)
-mse = mean_squared_error(y_test, y_pred)
 score = regressor.score(X_test, y_test)
 
 
-#from keras.models import Sequential
-#from keras.layers import Dense
-#
-#regressor = Sequential()
-#
-#regressor.add(Dense(output_dim=20, init='uniform', activation='relu', input_dim=11))
-#regressor.add(Dense(output_dim=20, init='uniform', activation='relu'))
-#regressor.add(Dense(output_dim=20, init='uniform', activation='relu'))
-#regressor.add(Dense(output_dim=20, init='uniform', activation='relu'))
-#
-#regressor.add(Dense(output_dim=1, init='uniform'))
-#regressor.compile(optimizer='adam', loss='mean_squared_error')
-#regressor.fit(X_train, y_train, batch_size=10, epochs=10)
-#
-#
-#y_pred = regressor.predict(X_test)
-#score = regressor.evaluate(X_test, y_test)
-
-
+BUS_LINES = ['1', '2', '2a', '3']
 
 def export_model(modellers, filename):
     from sklearn.externals import joblib
@@ -156,7 +126,7 @@ def import_model(filename):
     return joblib.load('pickled-data/'+filename+'.pkl')
 
 def save_model(filename):
-    export_model([regressor, labelencoder_direction, onehotencoder], filename)
+    export_model([regressor, labelencoder, onehotencoder], filename)
 
 def clean_data(data_point, time):
     new_data_point = data_point.copy()
@@ -168,9 +138,10 @@ def clean_data(data_point, time):
     new_data_point['last_point_lat'] = new_data_point['lat']
     new_data_point['last_point_lon'] = new_data_point['lon']
 #    data_point.timestamp + datetime.timedelta(0,5)
+    new_data_point['location_zone'] = math.floor(new_data_point['linear_ref'] * 10000)
 
     new_data_point = new_data_point[['direction', 'day_of_week', 'hour', 'speed', 
-                                     'second_from_last_point', 'linear_ref']]
+                                     'location_zone', 'second_from_last_point']]
     return new_data_point
     
 def encode_data(data_point, labelencoder, onehotencoder):
@@ -203,6 +174,8 @@ def get_bus_info(bus):
 #    bus_data['distance_from_route_in_meter']
     return bus_data
 
+#encoded_bus_data = []
+
 def predict_location(bus_line, bus_vehicle_id):
 #    print(bus_line,bus_id)
     bus_line = str(bus_line)
@@ -215,13 +188,15 @@ def predict_location(bus_line, bus_vehicle_id):
     if(not bus):
         return 'This bus is not available!'
         
-    [regressor, labelencoder, onehotencoder] = import_model('potong-' + bus_line)
+#    [regressor, labelencoder, onehotencoder] = import_model('potong-' + bus_line)
 
     bus_data = get_bus_info(bus)
     time = pd.to_datetime(datetime.datetime.utcnow())
     cleaned_bus_data = clean_data(bus_data, time)
     encoded_bus_data = encode_data(cleaned_bus_data, labelencoder, onehotencoder)
     
+#    np.set_printoptions(threshold=np.nan)
+#    print(encoded_bus_data)
     
     predicted_location = regressor.predict([encoded_bus_data])
 #    print(cleaned_bus_data['second_from_last_point'])
